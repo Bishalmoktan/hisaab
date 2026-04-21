@@ -1,25 +1,36 @@
-'use client';
+"use client";
 
-import { createClient } from '@/lib/supabase/client';
-import { useSearchParams } from 'next/navigation';
-import { Suspense } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { DollarSign, Users, TrendingUp, Shield } from 'lucide-react';
+import { createClient } from "@/lib/supabase/client";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { DollarSign, Users, TrendingUp, Shield } from "lucide-react";
 
 function LoginContent() {
   const searchParams = useSearchParams();
-  const error = searchParams.get('error');
+  const error = searchParams.get("error");
+  const redirectTo = searchParams.get("redirect") || "/dashboard";
 
   const handleGoogleLogin = async () => {
     const supabase = createClient();
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${location.origin}/auth/callback`,
-      }
-    });
+    try {
+      await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${location.origin}/auth/callback?redirect=${encodeURIComponent(
+            redirectTo,
+          )}`,
+        },
+      });
+    } catch (error) {}
   };
 
   return (
@@ -36,28 +47,41 @@ function LoginContent() {
 
           <div className="space-y-4">
             <h1 className="text-4xl font-bold text-slate-900 leading-tight">
-              Split expenses{' '}
-              <span className="text-blue-600">exactly</span>{' '}
-              the way you want
+              Split expenses <span className="text-blue-600">exactly</span> the
+              way you want
             </h1>
             <p className="text-lg text-slate-600">
-              Manually assign amounts based on what each person consumed.
-              No guessing, no rounding errors — just fair splits.
+              Manually assign amounts based on what each person consumed. No
+              guessing, no rounding errors — just fair splits.
             </p>
           </div>
 
           <div className="grid grid-cols-1 gap-4">
             {[
-              { icon: Users, title: 'Group Expenses', desc: 'Create groups for roommates, trips, or office lunches' },
-              { icon: TrendingUp, title: 'Track Balances', desc: 'See exactly who owes what with real-time updates' },
-              { icon: Shield, title: 'Approve Payments', desc: 'Verify and approve payments before marking debts settled' },
+              {
+                icon: Users,
+                title: "Group Expenses",
+                desc: "Create groups for roommates, trips, or office lunches",
+              },
+              {
+                icon: TrendingUp,
+                title: "Track Balances",
+                desc: "See exactly who owes what with real-time updates",
+              },
+              {
+                icon: Shield,
+                title: "Approve Payments",
+                desc: "Verify and approve payments before marking debts settled",
+              },
             ].map(({ icon: Icon, title, desc }) => (
               <div key={title} className="flex gap-3 items-start">
                 <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
                   <Icon className="w-4 h-4 text-blue-600" />
                 </div>
                 <div>
-                  <div className="font-semibold text-slate-800 text-sm">{title}</div>
+                  <div className="font-semibold text-slate-800 text-sm">
+                    {title}
+                  </div>
                   <div className="text-slate-500 text-sm">{desc}</div>
                 </div>
               </div>
@@ -68,7 +92,9 @@ function LoginContent() {
         {/* Right: Login Card */}
         <Card className="shadow-xl border-0 bg-white">
           <CardHeader className="pb-4">
-            <CardTitle className="text-2xl text-slate-900">Get started</CardTitle>
+            <CardTitle className="text-2xl text-slate-900">
+              Get started
+            </CardTitle>
             <CardDescription className="text-slate-500">
               Sign in to manage shared expenses with your group
             </CardDescription>
@@ -109,7 +135,8 @@ function LoginContent() {
             </Button>
 
             <p className="text-center text-xs text-slate-400">
-              By signing in, you agree to our terms of service and privacy policy
+              By signing in, you agree to our terms of service and privacy
+              policy
             </p>
           </CardContent>
         </Card>

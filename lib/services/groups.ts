@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Group, GroupInvite, GroupWithMembers } from "@/lib/types";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 export async function getUserGroups(): Promise<GroupWithMembers[]> {
   const supabase = await createClient();
@@ -136,6 +137,23 @@ export async function inviteMemberByEmail(groupId: string, email: string) {
     throw new Error(inviteError.message);
   }
 
+  supabase.functions
+    .invoke("send-invite-email", {
+      body: {
+        email,
+        token: inviteData.token,
+        invitedBy: user.id,
+        groupId,
+      },
+      headers: {
+        Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+      },
+    })
+    .then(() => console.log("Invite Email function triggered"))
+    .catch((error) =>
+      console.error("Error invoking send-invite-email:", error),
+    );
+
   const invite = inviteData as GroupInvite;
   revalidatePath(`/groups/${groupId}`);
   return { type: "invited" as const, token: invite.token };
@@ -159,7 +177,9 @@ export async function acceptInvite(token: string) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+  if (!user) {
+    throw new Error("NOT_AUTHENTICATED");
+  }
 
   const { data: inviteRaw, error: inviteError } = await supabase
     .from("group_invites")
@@ -170,6 +190,11 @@ export async function acceptInvite(token: string) {
 
   if (inviteError || !inviteRaw) throw new Error("Invalid or expired invite");
   const invite = inviteRaw as GroupInvite;
+
+  if (invite.email.toLowerCase() !== user.email?.toLowerCase()) {
+    throw new Error("This invite was sent to a different email");
+  }
+
   if (new Date(invite.expires_at) < new Date())
     throw new Error("Invite has expired");
 
