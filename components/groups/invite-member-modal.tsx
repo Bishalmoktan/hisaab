@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { inviteMemberByEmail } from '@/lib/services/groups';
-import { Button } from '@/components/ui/button';
+import { useState } from "react";
+import { inviteMemberByEmail } from "@/lib/services/groups";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -11,11 +11,11 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { UserPlus, Loader as Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { UserPlus, Loader as Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 interface Props {
   groupId: string;
@@ -23,27 +23,30 @@ interface Props {
 
 export function InviteMemberModal({ groupId }: Props) {
   const [open, setOpen] = useState(false);
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) return;
     setLoading(true);
-    try {
-      const result = await inviteMemberByEmail(groupId, email.trim());
-      if (result.type === 'added') {
-        toast.success('Member added to group!');
-      } else {
-        toast.success(`Invite sent to ${email}`);
-      }
-      setOpen(false);
-      setEmail('');
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to invite member');
-    } finally {
+    const result = await inviteMemberByEmail(groupId, email.trim());
+
+    if (!result.success) {
+      toast.error(result.message);
       setLoading(false);
+      return;
     }
+
+    if (result.type === "added") {
+      toast.success("Member added to group!");
+    } else {
+      toast.success(`Invite sent to ${email}`);
+    }
+    setOpen(false);
+    setEmail("");
+
+    setLoading(false);
   };
 
   return (
@@ -58,8 +61,9 @@ export function InviteMemberModal({ groupId }: Props) {
         <DialogHeader>
           <DialogTitle>Invite Member</DialogTitle>
           <DialogDescription>
-            Enter an email address to invite someone to this group. If they&apos;re already on the
-            platform, they&apos;ll be added immediately.
+            Enter an email address to invite someone to this group. If
+            they&apos;re already on the platform, they&apos;ll be added
+            immediately.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -76,11 +80,22 @@ export function InviteMemberModal({ groupId }: Props) {
             />
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={loading}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+              disabled={loading}
+            >
               Cancel
             </Button>
-            <Button type="submit" disabled={loading || !email.trim()} className="bg-blue-600 hover:bg-blue-700">
-              {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+            <Button
+              type="submit"
+              disabled={loading || !email.trim()}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {loading ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : null}
               Send Invite
             </Button>
           </DialogFooter>

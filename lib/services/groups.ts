@@ -116,7 +116,7 @@ export async function inviteMemberByEmail(groupId: string, email: string) {
       throw new Error(error.message);
     }
     revalidatePath(`/groups/${groupId}`);
-    return { type: "added" as const };
+    return { success: true, type: "added" as const };
   }
 
   // Create invite for non-existing user
@@ -132,9 +132,16 @@ export async function inviteMemberByEmail(groupId: string, email: string) {
 
   if (inviteError) {
     if (inviteError.message.includes("duplicate")) {
-      throw new Error("An invite has already been sent to this email");
+      return {
+        success: false,
+        message: "An invite has already been sent to this email",
+      };
     }
-    throw new Error(inviteError.message);
+
+    return {
+      success: false,
+      message: inviteError.message,
+    };
   }
 
   supabase.functions
@@ -156,7 +163,7 @@ export async function inviteMemberByEmail(groupId: string, email: string) {
 
   const invite = inviteData as GroupInvite;
   revalidatePath(`/groups/${groupId}`);
-  return { type: "invited" as const, token: invite.token };
+  return { success: true, type: "invited" as const, token: invite.token };
 }
 
 export async function removeMember(groupId: string, userId: string) {
