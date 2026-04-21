@@ -105,26 +105,31 @@ export async function createExpense(
   date: string,
   notes: string,
   splits: SplitInput[],
-) {
+): Promise<{ success: boolean; message?: string; expense?: any }> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+  if (!user) {
+    return { success: false, message: "Not authenticated" };
+  }
 
   // Validate splits sum
   const splitsTotal = splits.reduce((sum, s) => sum + Number(s.amountOwed), 0);
   const diff = Math.abs(splitsTotal - totalAmount);
   if (diff > 0.01) {
-    throw new Error(
-      `Split amounts (${splitsTotal.toFixed(2)}) must equal total amount (${totalAmount.toFixed(2)})`,
-    );
+    return {
+      success: false,
+      message: `Split amounts (${splitsTotal.toFixed(2)}) must equal total amount (${totalAmount.toFixed(2)})`,
+    };
   }
 
-  if (splits.length === 0)
-    throw new Error("At least one participant is required");
-  if (splits.some((s) => s.amountOwed < 0))
-    throw new Error("Amounts must be >= 0");
+  if (splits.length === 0) {
+    return { success: false, message: "At least one participant is required" };
+  }
+  if (splits.some((s) => s.amountOwed < 0)) {
+    return { success: false, message: "Amounts must be >= 0" };
+  }
 
   const { data: expense, error: expenseError } = await supabase
     .from("expenses")
@@ -139,8 +144,12 @@ export async function createExpense(
     .select()
     .single();
 
-  if (expenseError || !expense)
-    throw new Error(expenseError?.message ?? "Failed to create expense");
+  if (expenseError || !expense) {
+    return {
+      success: false,
+      message: expenseError?.message ?? "Failed to create expense",
+    };
+  }
 
   const { error: splitsError } = await supabase.from("expense_splits").insert(
     splits.map((s) => ({
@@ -154,7 +163,7 @@ export async function createExpense(
 
   if (splitsError) {
     await supabase.from("expenses").delete().eq("id", expense.id);
-    throw new Error(splitsError.message);
+    return { success: false, message: splitsError.message };
   }
 
   revalidatePath(`/groups/${groupId}`);
@@ -172,15 +181,20 @@ export async function createExpense(
     .then(() => console.log("Email function triggered"))
     .catch((error) => console.error("Error invoking send-email:", error));
 
-  return expense;
+  return { success: true, expense };
 }
 
-export async function markSplitAsPaid(splitId: string, expenseId: string) {
+export async function markSplitAsPaid(
+  splitId: string,
+  expenseId: string,
+): Promise<{ success: boolean; message?: string }> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+  if (!user) {
+    return { success: false, message: "Not authenticated" };
+  }
 
   const { error } = await supabase
     .from("expense_splits")
@@ -189,7 +203,9 @@ export async function markSplitAsPaid(splitId: string, expenseId: string) {
     .eq("user_id", user.id)
     .eq("status", "pending");
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    return { success: false, message: error.message };
+  }
 
   const { data: expense } = await supabase
     .from("expenses")
@@ -202,14 +218,21 @@ export async function markSplitAsPaid(splitId: string, expenseId: string) {
     revalidatePath(`/expenses/${expenseId}`);
     revalidatePath("/dashboard");
   }
+
+  return { success: true };
 }
 
-export async function approveSplit(splitId: string, expenseId: string) {
+export async function approveSplit(
+  splitId: string,
+  expenseId: string,
+): Promise<{ success: boolean; message?: string }> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+  if (!user) {
+    return { success: false, message: "Not authenticated" };
+  }
 
   // Verify current user is the payer
   const { data: expense } = await supabase
@@ -219,7 +242,9 @@ export async function approveSplit(splitId: string, expenseId: string) {
     .eq("paid_by", user.id)
     .maybeSingle();
 
-  if (!expense) throw new Error("Not authorized to approve this payment");
+  if (!expense) {
+    return { success: false, message: "Not authorized to approve this payment" };
+  }
 
   const { error } = await supabase
     .from("expense_splits")
@@ -227,19 +252,27 @@ export async function approveSplit(splitId: string, expenseId: string) {
     .eq("id", splitId)
     .eq("status", "paid");
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    return { success: false, message: error.message };
+  }
 
   revalidatePath(`/groups/${expense.group_id}`);
   revalidatePath(`/expenses/${expenseId}`);
   revalidatePath("/dashboard");
+  return { success: true };
 }
 
-export async function rejectSplit(splitId: string, expenseId: string) {
+export async function rejectSplit(
+  splitId: string,
+  expenseId: string,
+): Promise<{ success: boolean; message?: string }> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+  if (!user) {
+    return { success: false, message: "Not authenticated" };
+  }
 
   const { data: expense } = await supabase
     .from("expenses")
@@ -248,7 +281,9 @@ export async function rejectSplit(splitId: string, expenseId: string) {
     .eq("paid_by", user.id)
     .maybeSingle();
 
-  if (!expense) throw new Error("Not authorized");
+  if (!expense) {
+    return { success: false, message: "Not authorized" };
+  }
 
   const { error } = await supabase
     .from("expense_splits")
@@ -256,21 +291,30 @@ export async function rejectSplit(splitId: string, expenseId: string) {
     .eq("id", splitId)
     .eq("status", "paid");
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    return { success: false, message: error.message };
+  }
 
   revalidatePath(`/groups/${expense.group_id}`);
   revalidatePath(`/expenses/${expenseId}`);
+  return { success: true };
 }
 
-export async function deleteExpense(expenseId: string, groupId: string) {
+export async function deleteExpense(
+  expenseId: string,
+  groupId: string,
+): Promise<{ success: boolean; message?: string }> {
   const supabase = await createClient();
 
   const { error } = await supabase
     .from("expenses")
     .delete()
     .eq("id", expenseId);
-  if (error) throw new Error(error.message);
+  if (error) {
+    return { success: false, message: error.message };
+  }
 
   revalidatePath(`/groups/${groupId}`);
   revalidatePath("/dashboard");
+  return { success: true };
 }

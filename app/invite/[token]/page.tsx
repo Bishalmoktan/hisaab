@@ -25,14 +25,10 @@ export default function InvitePage({ params }: { params: { token: string } }) {
 
   const handleAccept = async () => {
     setLoading(true);
-    try {
-      const groupId = await acceptInvite(params.token);
-      setAccepted(true);
-      toast.success("Invite accepted! Welcome to the group.");
-      setTimeout(() => router.push(`/groups/${groupId}`), 1500);
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to accept invite";
+    const result = await acceptInvite(params.token);
+
+    if (!result.success) {
+      const message = result.message || "Failed to accept invite";
 
       if (message === "NOT_AUTHENTICATED") {
         router.push(`/login?redirect=/invite/${params.token}`);
@@ -40,9 +36,16 @@ export default function InvitePage({ params }: { params: { token: string } }) {
       }
 
       toast.error(message);
-    } finally {
       setLoading(false);
+      return;
     }
+
+    setAccepted(true);
+    toast.success("Invite accepted! Welcome to the group.");
+    if (result.groupId) {
+      setTimeout(() => router.push(`/groups/${result.groupId}`), 1500);
+    }
+    setLoading(false);
   };
 
   return (

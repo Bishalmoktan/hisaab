@@ -30,18 +30,22 @@ export function CreateGroupModal() {
     e.preventDefault();
     if (!name.trim()) return;
     setLoading(true);
-    try {
-      const group = await createGroup(name, description);
-      toast.success(`Group "${name}" created!`);
-      setOpen(false);
-      setName('');
-      setDescription('');
-      router.push(`/groups/${group.id}`);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to create group');
-    } finally {
+    const result = await createGroup(name, description);
+
+    if (!result.success) {
+      toast.error(result.message || "Failed to create group");
       setLoading(false);
+      return;
     }
+
+    toast.success(`Group "${name}" created!`);
+    setOpen(false);
+    setName("");
+    setDescription("");
+    if (result.group) {
+      router.push(`/groups/${result.group.id}`);
+    }
+    setLoading(false);
   };
 
   return (

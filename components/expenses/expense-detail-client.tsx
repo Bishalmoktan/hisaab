@@ -54,53 +54,53 @@ export function ExpenseDetailClient({ expense, currentUserId }: Props) {
 
   const handleMarkPaid = async (splitId: string) => {
     setLoadingAction(`pay-${splitId}`);
-    try {
-      await markSplitAsPaid(splitId, expense.id);
-      toast.success('Marked as paid! Waiting for approval.');
-      router.refresh();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to mark as paid');
-    } finally {
+    const result = await markSplitAsPaid(splitId, expense.id);
+    if (!result.success) {
+      toast.error(result.message || "Failed to mark as paid");
       setLoadingAction(null);
+      return;
     }
+    toast.success("Marked as paid! Waiting for approval.");
+    router.refresh();
+    setLoadingAction(null);
   };
 
   const handleApprove = async (splitId: string) => {
     setLoadingAction(`approve-${splitId}`);
-    try {
-      await approveSplit(splitId, expense.id);
-      toast.success('Payment approved!');
-      router.refresh();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to approve');
-    } finally {
+    const result = await approveSplit(splitId, expense.id);
+    if (!result.success) {
+      toast.error(result.message || "Failed to approve");
       setLoadingAction(null);
+      return;
     }
+    toast.success("Payment approved!");
+    router.refresh();
+    setLoadingAction(null);
   };
 
   const handleReject = async (splitId: string) => {
     setLoadingAction(`reject-${splitId}`);
-    try {
-      await rejectSplit(splitId, expense.id);
-      toast.success('Payment rejected — marked as pending again');
-      router.refresh();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to reject');
-    } finally {
+    const result = await rejectSplit(splitId, expense.id);
+    if (!result.success) {
+      toast.error(result.message || "Failed to reject");
       setLoadingAction(null);
+      return;
     }
+    toast.success("Payment rejected — marked as pending again");
+    router.refresh();
+    setLoadingAction(null);
   };
 
   const handleDelete = async () => {
-    setLoadingAction('delete');
-    try {
-      await deleteExpense(expense.id, expense.group_id);
-      toast.success('Expense deleted');
-      router.push(`/groups/${expense.group_id}`);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to delete');
+    setLoadingAction("delete");
+    const result = await deleteExpense(expense.id, expense.group_id);
+    if (!result.success) {
+      toast.error(result.message || "Failed to delete");
       setLoadingAction(null);
+      return;
     }
+    toast.success("Expense deleted");
+    router.push(`/groups/${expense.group_id}`);
   };
 
   return (

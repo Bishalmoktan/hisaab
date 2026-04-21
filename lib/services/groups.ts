@@ -3,7 +3,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Group, GroupInvite, GroupWithMembers } from "@/lib/types";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 
 export async function getUserGroups(): Promise<GroupWithMembers[]> {
   const supabase = await createClient();
@@ -60,12 +59,14 @@ export async function getGroupById(
 export async function createGroup(
   name: string,
   description: string,
-): Promise<Group> {
+): Promise<{ success: boolean; message?: string; group?: Group }> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+  if (!user) {
+    return { success: false, message: "Not authenticated" };
+  }
 
   const { data: group, error: groupError } = await supabase
     .from("groups")
@@ -77,18 +78,21 @@ export async function createGroup(
     .select()
     .single();
 
-  if (groupError || !group)
-    throw new Error(groupError?.message ?? "Failed to create group");
+  if (groupError || !group) {
+    return { success: false, message: groupError?.message ?? "Failed to create group" };
+  }
 
   const { error: memberError } = await supabase
     .from("group_members")
     .insert({ group_id: group.id, user_id: user.id, role: "admin" });
 
-  if (memberError) throw new Error("Failed to add creator as admin");
+  if (memberError) {
+    return { success: false, message: "Failed to add creator as admin" };
+  }
 
   revalidatePath("/dashboard");
   revalidatePath("/groups");
-  return group as Group;
+  return { success: true, group: group as Group };
 }
 
 export async function inviteMemberByEmail(groupId: string, email: string) {
@@ -96,7 +100,9 @@ export async function inviteMemberByEmail(groupId: string, email: string) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error("Not authenticated");
+  if (!user) {
+    return { success: false, message: "Not authenticated" };
+  }
 
   // Check if user exists
   const { data: existingUser } = await supabase
@@ -113,7 +119,7 @@ export async function inviteMemberByEmail(groupId: string, email: string) {
       .insert({ group_id: groupId, user_id: userId, role: "member" });
 
     if (error && !error.message.includes("duplicate")) {
-      throw new Error(error.message);
+      return { success: false, message: error.message };
     }
     revalidatePath(`/groups/${groupId}`);
     return { success: true, type: "added" as const };
@@ -166,7 +172,10 @@ export async function inviteMemberByEmail(groupId: string, email: string) {
   return { success: true, type: "invited" as const, token: invite.token };
 }
 
-export async function removeMember(groupId: string, userId: string) {
+export async function removeMember(
+  groupId: string,
+  userId: string,
+): Promise<{ success: boolean; message?: string }> {
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -175,17 +184,22 @@ export async function removeMember(groupId: string, userId: string) {
     .eq("group_id", groupId)
     .eq("user_id", userId);
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    return { success: false, message: error.message };
+  }
   revalidatePath(`/groups/${groupId}`);
+  return { success: true };
 }
 
-export async function acceptInvite(token: string) {
+export async function acceptInvite(
+  token: string,
+): Promise<{ success: boolean; message?: string; groupId?: string }> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    throw new Error("NOT_AUTHENTICATED");
+    return { success: false, message: "NOT_AUTHENTICATED" };
   }
 
   const { data: inviteRaw, error: inviteError } = await supabase
@@ -195,22 +209,28 @@ export async function acceptInvite(token: string) {
     .is("accepted_at", null)
     .maybeSingle();
 
-  if (inviteError || !inviteRaw) throw new Error("Invalid or expired invite");
+  if (inviteError || !inviteRaw) {
+    return { success: false, message: "Invalid or expired invite" };
+  }
   const invite = inviteRaw as GroupInvite;
 
   if (invite.email.toLowerCase() !== user.email?.toLowerCase()) {
-    throw new Error("This invite was sent to a different email");
+    return {
+      success: false,
+      message: "This invite was sent to a different email",
+    };
   }
 
-  if (new Date(invite.expires_at) < new Date())
-    throw new Error("Invite has expired");
+  if (new Date(invite.expires_at) < new Date()) {
+    return { success: false, message: "Invite has expired" };
+  }
 
   const { error: memberError } = await supabase
     .from("group_members")
     .insert({ group_id: invite.group_id, user_id: user.id, role: "member" });
 
   if (memberError && !memberError.message.includes("duplicate")) {
-    throw new Error(memberError.message);
+    return { success: false, message: memberError.message };
   }
 
   await supabase
@@ -219,5 +239,5 @@ export async function acceptInvite(token: string) {
     .eq("id", invite.id);
 
   revalidatePath("/dashboard");
-  return invite.group_id;
+  return { success: true, groupId: invite.group_id };
 }

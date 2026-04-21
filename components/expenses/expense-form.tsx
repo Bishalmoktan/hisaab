@@ -94,25 +94,27 @@ export function ExpenseForm({ groupId, groupName, members, currentUserId }: Prop
     if (!canSubmit) return;
 
     setLoading(true);
-    try {
-      await createExpense(
-        groupId,
-        title,
-        totalNum,
-        date,
-        notes,
-        selectedSplits.map((s) => ({
-          userId: s.userId,
-          amountOwed: parseFloat(s.amount) || 0,
-        }))
-      );
-      toast.success('Expense added successfully!');
-      router.push(`/groups/${groupId}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create expense');
-    } finally {
+    const result = await createExpense(
+      groupId,
+      title,
+      totalNum,
+      date,
+      notes,
+      selectedSplits.map((s) => ({
+        userId: s.userId,
+        amountOwed: parseFloat(s.amount) || 0,
+      }))
+    );
+
+    if (!result.success) {
+      setError(result.message || "Failed to create expense");
       setLoading(false);
+      return;
     }
+
+    toast.success("Expense added successfully!");
+    router.push(`/groups/${groupId}`);
+    setLoading(false);
   };
 
   return (
