@@ -1,129 +1,154 @@
-'use server';
+"use server";
 
-import { createClient } from '@/lib/supabase/server';
-import type { Group, GroupInvite, GroupWithMembers } from '@/lib/types';
-import { revalidatePath } from 'next/cache';
+import { createClient } from "@/lib/supabase/server";
+import type { Group, GroupInvite, GroupWithMembers } from "@/lib/types";
+import { revalidatePath } from "next/cache";
 
 export async function getUserGroups(): Promise<GroupWithMembers[]> {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return [];
 
   const { data, error } = await supabase
-    .from('groups')
-    .select(`
+    .from("groups")
+    .select(
+      `
       *,
-      members:group_members(
+      members:group_members!inner(
         *,
         user:users(*)
       )
-    `)
-    .order('created_at', { ascending: false });
+    `,
+    )
+    .eq("group_members.user_id", user.id)
+    .order("created_at", { ascending: false });
 
   if (error) {
-    console.error('getUserGroups error:', error);
+    console.error("getUserGroups error:", error);
     return [];
   }
 
   return (data as GroupWithMembers[]) ?? [];
 }
 
-export async function getGroupById(groupId: string): Promise<GroupWithMembers | null> {
+export async function getGroupById(
+  groupId: string,
+): Promise<GroupWithMembers | null> {
   const supabase = await createClient();
 
   const { data, error } = await supabase
-    .from('groups')
-    .select(`
+    .from("groups")
+    .select(
+      `
       *,
       members:group_members(
         *,
         user:users(*)
       )
-    `)
-    .eq('id', groupId)
+    `,
+    )
+    .eq("id", groupId)
     .maybeSingle();
 
   if (error || !data) return null;
   return data as GroupWithMembers;
 }
 
-export async function createGroup(name: string, description: string): Promise<Group> {
+export async function createGroup(
+  name: string,
+  description: string,
+): Promise<Group> {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
 
   const { data: group, error: groupError } = await supabase
-    .from('groups')
-    .insert({ name: name.trim(), description: description.trim(), created_by: user.id })
+    .from("groups")
+    .insert({
+      name: name.trim(),
+      description: description.trim(),
+      created_by: user.id,
+    })
     .select()
     .single();
 
-  if (groupError || !group) throw new Error(groupError?.message ?? 'Failed to create group');
+  if (groupError || !group)
+    throw new Error(groupError?.message ?? "Failed to create group");
 
   const { error: memberError } = await supabase
-    .from('group_members')
-    .insert({ group_id: group.id, user_id: user.id, role: 'admin' });
+    .from("group_members")
+    .insert({ group_id: group.id, user_id: user.id, role: "admin" });
 
-  if (memberError) throw new Error('Failed to add creator as admin');
+  if (memberError) throw new Error("Failed to add creator as admin");
 
-  revalidatePath('/dashboard');
-  revalidatePath('/groups');
+  revalidatePath("/dashboard");
+  revalidatePath("/groups");
   return group as Group;
 }
 
 export async function inviteMemberByEmail(groupId: string, email: string) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
 
   // Check if user exists
   const { data: existingUser } = await supabase
-    .from('users')
-    .select('id')
-    .eq('email', email.toLowerCase().trim())
+    .from("users")
+    .select("id")
+    .eq("email", email.toLowerCase().trim())
     .maybeSingle();
 
   if (existingUser) {
     // Add directly as member
     const userId = (existingUser as { id: string }).id;
     const { error } = await supabase
-      .from('group_members')
-      .insert({ group_id: groupId, user_id: userId, role: 'member' });
+      .from("group_members")
+      .insert({ group_id: groupId, user_id: userId, role: "member" });
 
-    if (error && !error.message.includes('duplicate')) {
+    if (error && !error.message.includes("duplicate")) {
       throw new Error(error.message);
     }
     revalidatePath(`/groups/${groupId}`);
-    return { type: 'added' as const };
+    return { type: "added" as const };
   }
 
   // Create invite for non-existing user
   const { data: inviteData, error: inviteError } = await supabase
-    .from('group_invites')
-    .insert({ group_id: groupId, email: email.toLowerCase().trim(), invited_by: user.id })
+    .from("group_invites")
+    .insert({
+      group_id: groupId,
+      email: email.toLowerCase().trim(),
+      invited_by: user.id,
+    })
     .select()
     .single();
 
   if (inviteError) {
-    if (inviteError.message.includes('duplicate')) {
-      throw new Error('An invite has already been sent to this email');
+    if (inviteError.message.includes("duplicate")) {
+      throw new Error("An invite has already been sent to this email");
     }
     throw new Error(inviteError.message);
   }
 
   const invite = inviteData as GroupInvite;
   revalidatePath(`/groups/${groupId}`);
-  return { type: 'invited' as const, token: invite.token };
+  return { type: "invited" as const, token: invite.token };
 }
 
 export async function removeMember(groupId: string, userId: string) {
   const supabase = await createClient();
 
   const { error } = await supabase
-    .from('group_members')
+    .from("group_members")
     .delete()
-    .eq('group_id', groupId)
-    .eq('user_id', userId);
+    .eq("group_id", groupId)
+    .eq("user_id", userId);
 
   if (error) throw new Error(error.message);
   revalidatePath(`/groups/${groupId}`);
@@ -131,33 +156,36 @@ export async function removeMember(groupId: string, userId: string) {
 
 export async function acceptInvite(token: string) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
 
   const { data: inviteRaw, error: inviteError } = await supabase
-    .from('group_invites')
-    .select('*')
-    .eq('token', token)
-    .is('accepted_at', null)
+    .from("group_invites")
+    .select("*")
+    .eq("token", token)
+    .is("accepted_at", null)
     .maybeSingle();
 
-  if (inviteError || !inviteRaw) throw new Error('Invalid or expired invite');
+  if (inviteError || !inviteRaw) throw new Error("Invalid or expired invite");
   const invite = inviteRaw as GroupInvite;
-  if (new Date(invite.expires_at) < new Date()) throw new Error('Invite has expired');
+  if (new Date(invite.expires_at) < new Date())
+    throw new Error("Invite has expired");
 
   const { error: memberError } = await supabase
-    .from('group_members')
-    .insert({ group_id: invite.group_id, user_id: user.id, role: 'member' });
+    .from("group_members")
+    .insert({ group_id: invite.group_id, user_id: user.id, role: "member" });
 
-  if (memberError && !memberError.message.includes('duplicate')) {
+  if (memberError && !memberError.message.includes("duplicate")) {
     throw new Error(memberError.message);
   }
 
   await supabase
-    .from('group_invites')
+    .from("group_invites")
     .update({ accepted_at: new Date().toISOString() })
-    .eq('id', invite.id);
+    .eq("id", invite.id);
 
-  revalidatePath('/dashboard');
+  revalidatePath("/dashboard");
   return invite.group_id;
 }
