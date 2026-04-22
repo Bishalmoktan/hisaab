@@ -35,28 +35,28 @@ function LoginContent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-5xl grid lg:grid-cols-2 gap-12 items-center">
+      <div className="w-full max-w-5xl grid lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-12 items-center">
         {/* Left: Branding */}
-        <div className="space-y-8">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
-              <DollarSign className="w-6 h-6 text-white" />
+        <div className="space-y-6 sm:space-y-8 hidden lg:block">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="w-9 sm:w-10 h-9 sm:h-10 bg-blue-600 rounded-lg sm:rounded-xl flex items-center justify-center">
+              <DollarSign className="w-5 sm:w-6 h-5 sm:h-6 text-white" />
             </div>
-            <span className="text-2xl font-bold text-slate-900">Hisaab</span>
+            <span className="text-xl sm:text-2xl font-bold text-slate-900">Hisaab</span>
           </div>
 
-          <div className="space-y-4">
-            <h1 className="text-4xl font-bold text-slate-900 leading-tight">
+          <div className="space-y-3 sm:space-y-4">
+            <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 leading-tight">
               Split expenses <span className="text-blue-600">exactly</span> the
               way you want
             </h1>
-            <p className="text-lg text-slate-600">
+            <p className="text-base sm:text-lg text-slate-600">
               Manually assign amounts based on what each person consumed. No
               guessing, no rounding errors — just fair splits.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-4">
+          <div className="space-y-3 sm:space-y-4">
             {[
               {
                 icon: Users,
@@ -74,15 +74,15 @@ function LoginContent() {
                 desc: "Verify and approve payments before marking debts settled",
               },
             ].map(({ icon: Icon, title, desc }) => (
-              <div key={title} className="flex gap-3 items-start">
-                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
-                  <Icon className="w-4 h-4 text-blue-600" />
+              <div key={title} className="flex gap-2 sm:gap-3 items-start">
+                <div className="w-7 sm:w-8 h-7 sm:h-8 bg-blue-100 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
+                  <Icon className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-blue-600" />
                 </div>
                 <div>
-                  <div className="font-semibold text-slate-800 text-sm">
+                  <div className="font-semibold text-slate-800 text-xs sm:text-sm">
                     {title}
                   </div>
-                  <div className="text-slate-500 text-sm">{desc}</div>
+                  <div className="text-slate-500 text-xs sm:text-sm">{desc}</div>
                 </div>
               </div>
             ))}
@@ -90,19 +90,25 @@ function LoginContent() {
         </div>
 
         {/* Right: Login Card */}
-        <Card className="shadow-xl border-0 bg-white">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-2xl text-slate-900">
+        <Card className="shadow-xl border-0 bg-white w-full max-w-sm">
+          <CardHeader className="pb-3 sm:pb-4">
+            <div className="flex items-center gap-2 sm:gap-3 lg:hidden mb-3 sm:mb-4">
+              <div className="w-8 sm:w-9 h-8 sm:h-9 bg-blue-600 rounded-lg flex items-center justify-center">
+                <DollarSign className="w-4 sm:w-5 h-4 sm:h-5 text-white" />
+              </div>
+              <span className="text-lg sm:text-xl font-bold text-slate-900">Hisaab</span>
+            </div>
+            <CardTitle className="text-xl sm:text-2xl text-slate-900">
               Get started
             </CardTitle>
-            <CardDescription className="text-slate-500">
+            <CardDescription className="text-xs sm:text-sm text-slate-500">
               Sign in to manage shared expenses with your group
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-4 sm:space-y-6">
             {error && (
               <Alert variant="destructive">
-                <AlertDescription>
+                <AlertDescription className="text-xs sm:text-sm">
                   Authentication failed. Please try again.
                 </AlertDescription>
               </Alert>
@@ -110,10 +116,10 @@ function LoginContent() {
 
             <Button
               onClick={handleGoogleLogin}
-              className="w-full h-12 bg-white border-2 border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all gap-3 font-medium"
+              className="w-full h-10 sm:h-12 bg-white border-2 border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all gap-2 sm:gap-3 font-medium text-sm sm:text-base"
               variant="outline"
             >
-              <svg className="w-5 h-5" viewBox="0 0 24 24">
+              <svg className="w-4 sm:w-5 h-4 sm:h-5" viewBox="0 0 24 24">
                 <path
                   d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
                   fill="#4285F4"
@@ -131,7 +137,8 @@ function LoginContent() {
                   fill="#EA4335"
                 />
               </svg>
-              Continue with Google
+              <span className="hidden sm:inline">Continue with Google</span>
+              <span className="sm:hidden">Sign in with Google</span>
             </Button>
 
             <p className="text-center text-xs text-slate-400">

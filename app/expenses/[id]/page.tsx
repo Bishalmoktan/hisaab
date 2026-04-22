@@ -14,11 +14,11 @@ export default async function ExpenseDetailPage({ params }: { params: { id: stri
   if (!expense) notFound();
 
   return (
-    <div className="p-6 lg:p-8 max-w-2xl">
-      <div className="mb-6">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-2xl">
+      <div className="mb-4 sm:mb-6">
         <Link
           href={`/groups/${expense.group_id}`}
-          className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 transition-colors mb-4"
+          className="flex items-center gap-2 text-xs sm:text-sm text-slate-500 hover:text-slate-700 transition-colors mb-4"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Group

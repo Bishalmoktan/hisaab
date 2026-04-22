@@ -17,17 +17,17 @@ export default async function NewExpensePage({ params }: { params: { id: string 
   if (!isMember) redirect('/dashboard');
 
   return (
-    <div className="p-6 lg:p-8 max-w-2xl">
-      <div className="mb-6">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-2xl">
+      <div className="mb-4 sm:mb-6">
         <Link
           href={`/groups/${group.id}`}
-          className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 transition-colors mb-4"
+          className="flex items-center gap-2 text-xs sm:text-sm text-slate-500 hover:text-slate-700 transition-colors mb-3 sm:mb-4"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to {group.name}
         </Link>
-        <h1 className="text-2xl font-bold text-slate-900">Add Expense</h1>
-        <p className="text-slate-500 mt-0.5">
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Add Expense</h1>
+        <p className="text-xs sm:text-base text-slate-500 mt-0.5">
           Manually assign each person&apos;s share of the bill
         </p>
       </div>

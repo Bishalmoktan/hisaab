@@ -118,14 +118,14 @@ export function ExpenseForm({ groupId, groupName, members, currentUserId }: Prop
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
       {/* Expense Details */}
       <Card className="border-0 shadow-sm bg-white">
-        <CardContent className="p-5 space-y-4">
-          <h2 className="font-semibold text-slate-800">Expense Details</h2>
+        <CardContent className="p-4 sm:p-5 space-y-3 sm:space-y-4">
+          <h2 className="font-semibold text-sm sm:text-base text-slate-800">Expense Details</h2>
 
           <div className="space-y-2">
-            <Label htmlFor="title">Description *</Label>
+            <Label htmlFor="title" className="text-xs sm:text-sm">Description *</Label>
             <Input
               id="title"
               placeholder="e.g. Lunch at Cafe, Uber to airport..."
@@ -133,14 +133,15 @@ export function ExpenseForm({ groupId, groupName, members, currentUserId }: Prop
               onChange={(e) => setTitle(e.target.value)}
               required
               autoFocus
+              className="text-sm"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="space-y-2">
-              <Label htmlFor="total">Total Amount *</Label>
+              <Label htmlFor="total" className="text-xs sm:text-sm">Total Amount *</Label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-medium">₹</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-medium text-sm">₹</span>
                 <Input
                   id="total"
                   type="number"
@@ -149,33 +150,34 @@ export function ExpenseForm({ groupId, groupName, members, currentUserId }: Prop
                   placeholder="0.00"
                   value={totalAmount}
                   onChange={(e) => setTotalAmount(e.target.value)}
-                  className="pl-7"
+                  className="pl-7 text-sm"
                   required
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="date">Date *</Label>
+              <Label htmlFor="date" className="text-xs sm:text-sm">Date *</Label>
               <Input
                 id="date"
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 required
+                className="text-sm"
               />
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="notes">Notes</Label>
+            <Label htmlFor="notes" className="text-xs sm:text-sm">Notes</Label>
             <Textarea
               id="notes"
               placeholder="Any additional details..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
-              className="resize-none"
+              className="resize-none text-sm"
             />
           </div>
         </CardContent>
@@ -183,9 +185,9 @@ export function ExpenseForm({ groupId, groupName, members, currentUserId }: Prop
 
       {/* Split Assignment */}
       <Card className="border-0 shadow-sm bg-white">
-        <CardContent className="p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-slate-800">Split Amounts</h2>
+        <CardContent className="p-4 sm:p-5 space-y-3 sm:space-y-4">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="font-semibold text-sm sm:text-base text-slate-800">Split Amounts</h2>
             <Button
               type="button"
               variant="outline"
@@ -194,39 +196,41 @@ export function ExpenseForm({ groupId, groupName, members, currentUserId }: Prop
               disabled={totalNum <= 0 || selectedSplits.length === 0}
               className="text-xs gap-1"
             >
-              <Users className="w-3.5 h-3.5" />
-              Split Evenly
+              <Users className="w-3 h-3" />
+              <span className="hidden sm:inline">Split Evenly</span>
+              <span className="sm:hidden">Split</span>
             </Button>
           </div>
 
-          <p className="text-sm text-slate-500">
+          <p className="text-xs sm:text-sm text-slate-500">
             Select participants and enter the exact amount each person owes based on what they consumed.
           </p>
 
           {/* Live Balance Tracker */}
           <div className={cn(
-            'rounded-xl p-4 space-y-2',
+            'rounded-lg sm:rounded-xl p-3 sm:p-4 space-y-2',
             isBalanced ? 'bg-green-50 border border-green-200' : 'bg-slate-50 border border-slate-200'
           )}>
-            <div className="grid grid-cols-3 gap-4 text-center">
+            <div className="grid grid-cols-3 gap-2 sm:gap-4 text-center text-xs sm:text-sm">
               <div>
                 <div className="text-xs text-slate-500 mb-1">Total Bill</div>
-                <div className="font-bold text-slate-900">{formatCurrency(totalNum)}</div>
+                <div className="font-bold text-slate-900 text-sm sm:text-base">{formatCurrency(totalNum)}</div>
               </div>
               <div>
                 <div className="text-xs text-slate-500 mb-1">Assigned</div>
-                <div className="font-bold text-blue-600">{formatCurrency(assignedTotal)}</div>
+                <div className="font-bold text-blue-600 text-sm sm:text-base">{formatCurrency(assignedTotal)}</div>
               </div>
               <div>
                 <div className="text-xs text-slate-500 mb-1">Remaining</div>
                 <div className={cn(
-                  'font-bold text-lg',
+                  'font-bold text-sm sm:text-base',
                   isBalanced ? 'text-green-600' : remaining > 0 ? 'text-red-600' : 'text-orange-600'
                 )}>
                   {remaining === 0 ? (
-                    <span className="flex items-center justify-center gap-1">
-                      <CheckCircle2 className="w-4 h-4" />
-                      Balanced
+                    <span className="flex items-center justify-center gap-1 text-xs sm:text-sm">
+                      <CheckCircle2 className="w-3 h-3" />
+                      <span className="hidden sm:inline">Balanced</span>
+                      <span className="sm:hidden">OK</span>
                     </span>
                   ) : (
                     formatCurrency(Math.abs(remaining))
@@ -250,7 +254,7 @@ export function ExpenseForm({ groupId, groupName, members, currentUserId }: Prop
               <div
                 key={split.userId}
                 className={cn(
-                  'flex items-center gap-3 p-3 rounded-xl border transition-colors',
+                  'flex items-center gap-2 p-2 sm:p-3 rounded-lg sm:rounded-xl border transition-colors',
                   split.selected ? 'border-blue-200 bg-blue-50/50' : 'border-slate-200 bg-slate-50/50'
                 )}
               >
@@ -259,7 +263,7 @@ export function ExpenseForm({ groupId, groupName, members, currentUserId }: Prop
                   checked={split.selected}
                   onCheckedChange={() => toggleMember(split.userId)}
                 />
-                <Avatar className="w-8 h-8 shrink-0">
+                <Avatar className="w-7 sm:w-8 h-7 sm:h-8 shrink-0">
                   <AvatarImage src={split.user.avatar_url ?? undefined} />
                   <AvatarFallback className="bg-blue-100 text-blue-700 text-xs font-semibold">
                     {split.user.name[0].toUpperCase()}
@@ -268,18 +272,18 @@ export function ExpenseForm({ groupId, groupName, members, currentUserId }: Prop
                 <div className="flex-1 min-w-0">
                   <label
                     htmlFor={`member-${split.userId}`}
-                    className="font-medium text-slate-900 text-sm cursor-pointer"
+                    className="font-medium text-slate-900 text-xs sm:text-sm cursor-pointer"
                   >
                     {split.user.name}
                     {split.userId === currentUserId && (
                       <span className="text-slate-400 font-normal ml-1">(you)</span>
                     )}
                   </label>
-                  <div className="text-xs text-slate-400">{split.user.email}</div>
+                  <div className="text-xs text-slate-400 hidden sm:block">{split.user.email}</div>
                 </div>
                 {split.selected && (
-                  <div className="relative w-28 shrink-0">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">₹</span>
+                  <div className="relative w-20 sm:w-28 shrink-0">
+                    <span className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs sm:text-sm">₹</span>
                     <Input
                       type="number"
                       min="0"
@@ -287,7 +291,7 @@ export function ExpenseForm({ groupId, groupName, members, currentUserId }: Prop
                       placeholder="0.00"
                       value={split.amount}
                       onChange={(e) => setAmount(split.userId, e.target.value)}
-                      className="pl-7 h-8 text-sm"
+                      className="pl-5 sm:pl-7 h-7 sm:h-8 text-xs sm:text-sm"
                     />
                   </div>
                 )}
@@ -298,31 +302,32 @@ export function ExpenseForm({ groupId, groupName, members, currentUserId }: Prop
       </Card>
 
       {error && (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="text-sm">
           <AlertCircle className="w-4 h-4" />
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription className="text-xs sm:text-sm">{error}</AlertDescription>
         </Alert>
       )}
 
-      <div className="flex gap-3">
+      <div className="flex gap-2 sm:gap-3">
         <Button
           type="button"
           variant="outline"
           onClick={() => router.push(`/groups/${groupId}`)}
           disabled={loading}
-          className="flex-1"
+          className="flex-1 text-sm"
         >
-          Cancel
+          <span className="hidden sm:inline">Cancel</span>
+          <span className="sm:hidden">Back</span>
         </Button>
         <Button
           type="submit"
           disabled={!canSubmit || loading}
-          className="flex-1 bg-blue-600 hover:bg-blue-700"
+          className="flex-1 bg-blue-600 hover:bg-blue-700 text-sm"
         >
           {loading ? (
-            <><Loader2 className="w-4 h-4 animate-spin mr-2" />Saving...</>
+            <><Loader2 className="w-4 h-4 animate-spin mr-2" /><span className="hidden sm:inline">Saving</span><span className="sm:hidden">Save</span></>
           ) : (
-            'Add Expense'
+            <span>Add Expense</span>
           )}
         </Button>
       </div>

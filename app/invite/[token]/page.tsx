@@ -51,48 +51,49 @@ export default function InvitePage({ params }: { params: { token: string } }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
       <Card className="w-full max-w-md shadow-xl border-0">
-        <CardHeader className="text-center pb-4">
-          <div className="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+        <CardHeader className="text-center pb-3 sm:pb-4">
+          <div className="w-12 sm:w-16 h-12 sm:h-16 bg-blue-100 rounded-lg sm:rounded-2xl flex items-center justify-center mx-auto mb-2 sm:mb-4">
             {accepted ? (
-              <CheckCircle className="w-8 h-8 text-green-600" />
+              <CheckCircle className="w-6 sm:w-8 h-6 sm:h-8 text-green-600" />
             ) : (
-              <Users className="w-8 h-8 text-blue-600" />
+              <Users className="w-6 sm:w-8 h-6 sm:h-8 text-blue-600" />
             )}
           </div>
-          <CardTitle className="text-2xl">
+          <CardTitle className="text-xl sm:text-2xl">
             {accepted ? "Welcome aboard!" : "You've been invited"}
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-xs sm:text-sm">
             {accepted
               ? "Redirecting you to the group..."
               : "You have been invited to join an expense sharing group."}
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-3 sm:space-y-4">
           {!accepted && (
             <>
-              <p className="text-sm text-slate-500 text-center">
+              <p className="text-xs sm:text-sm text-slate-500 text-center">
                 Sign in with your account and click accept to join the group and
                 start splitting expenses with your team.
               </p>
               <Button
                 onClick={handleAccept}
                 disabled={loading}
-                className="w-full bg-blue-600 hover:bg-blue-700"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-sm sm:text-base h-9 sm:h-10"
               >
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    Accepting...
+                    <span className="hidden sm:inline">Accepting...</span>
+                    <span className="sm:hidden">Accepting</span>
                   </>
                 ) : (
-                  "Accept Invitation"
+                  <span>Accept Invitation</span>
                 )}
               </Button>
               <Button
                 variant="ghost"
                 onClick={() => router.push("/dashboard")}
-                className="w-full"
+                className="w-full text-sm sm:text-base"
               >
                 Go to Dashboard
               </Button>
