@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type { ExpenseWithDetails, SplitInput } from "@/lib/types";
 import { revalidatePath } from "next/cache";
+import { sendNotificationToUser } from "../actions/notify";
 
 export async function getGroupExpenses(
   groupId: string,
@@ -217,6 +218,26 @@ export async function markSplitAsPaid(
     revalidatePath(`/groups/${expense.group_id}`);
     revalidatePath(`/expenses/${expenseId}`);
     revalidatePath("/dashboard");
+
+    const { data: expenseDetails } = await supabase
+      .from("expenses")
+      .select("title, paid_by, payer:users!expenses_paid_by_fkey(name)")
+      .eq("id", expenseId)
+      .single();
+
+    if (expenseDetails) {
+      try {
+        await sendNotificationToUser(expenseDetails.paid_by, {
+          title: "Payment Update",
+          body: `${
+            user.user_metadata?.name || "Someone"
+          } marked their share as paid for "${expenseDetails.title}"`,
+          url: `/expenses/${expenseId}`,
+        });
+      } catch (err) {
+        console.error("Push notification failed:", err);
+      }
+    }
   }
 
   return { success: true };
@@ -237,23 +258,40 @@ export async function approveSplit(
   // Verify current user is the payer
   const { data: expense } = await supabase
     .from("expenses")
-    .select("group_id, paid_by")
+    .select("group_id, paid_by, title")
     .eq("id", expenseId)
     .eq("paid_by", user.id)
     .maybeSingle();
 
   if (!expense) {
-    return { success: false, message: "Not authorized to approve this payment" };
+    return {
+      success: false,
+      message: "Not authorized to approve this payment",
+    };
   }
 
-  const { error } = await supabase
+  const { data: updatedSplit, error } = await supabase
     .from("expense_splits")
     .update({ status: "approved", approved_at: new Date().toISOString() })
     .eq("id", splitId)
-    .eq("status", "paid");
+    .eq("status", "paid")
+    .select("user_id, amount_owed")
+    .maybeSingle();
 
   if (error) {
     return { success: false, message: error.message };
+  }
+
+  if (updatedSplit) {
+    try {
+      await sendNotificationToUser(updatedSplit.user_id, {
+        title: "Payment Approved",
+        body: `Your payment of Rs.${updatedSplit.amount_owed} for "${expense.title}" has been approved ✅`,
+        url: `/expenses/${expenseId}`,
+      });
+    } catch (err) {
+      console.error("Push failed:", err);
+    }
   }
 
   revalidatePath(`/groups/${expense.group_id}`);
@@ -276,7 +314,7 @@ export async function rejectSplit(
 
   const { data: expense } = await supabase
     .from("expenses")
-    .select("group_id, paid_by")
+    .select("group_id, paid_by, title")
     .eq("id", expenseId)
     .eq("paid_by", user.id)
     .maybeSingle();
@@ -285,14 +323,28 @@ export async function rejectSplit(
     return { success: false, message: "Not authorized" };
   }
 
-  const { error } = await supabase
+  const { data: rejectedSplit, error } = await supabase
     .from("expense_splits")
     .update({ status: "pending", paid_at: null })
     .eq("id", splitId)
-    .eq("status", "paid");
+    .eq("status", "paid")
+    .select("user_id, amount_owed")
+    .maybeSingle();
 
   if (error) {
     return { success: false, message: error.message };
+  }
+
+  if (rejectedSplit) {
+    try {
+      await sendNotificationToUser(rejectedSplit.user_id, {
+        title: "Payment Rejected",
+        body: `Your payment of Rs.${rejectedSplit.amount_owed} for "${expense.title}" has been rejected ❌`,
+        url: `/expenses/${expenseId}`,
+      });
+    } catch (err) {
+      console.error("Push failed:", err);
+    }
   }
 
   revalidatePath(`/groups/${expense.group_id}`);
