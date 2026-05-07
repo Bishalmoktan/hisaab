@@ -370,3 +370,156 @@ export async function deleteExpense(
   revalidatePath("/dashboard");
   return { success: true };
 }
+
+export async function markDebtAsPaidForUser(
+  groupId: string,
+  toUserId: string,
+): Promise<{ success: boolean; message?: string; count?: number }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, message: "Not authenticated" };
+  }
+
+  // Get all expenses paid by the toUserId in the group
+  const { data: expenses, error: expensesError } = await supabase
+    .from("expenses")
+    .select("id")
+    .eq("group_id", groupId)
+    .eq("paid_by", toUserId);
+
+  if (expensesError || !expenses) {
+    return { success: false, message: "Failed to fetch expenses" };
+  }
+
+  const expenseIds = expenses.map((e) => e.id);
+
+  if (expenseIds.length === 0) {
+    return { success: true, count: 0 };
+  }
+
+  // Get all pending splits for the current user in these expenses
+  const { data: splits, error: splitsError } = await supabase
+    .from("expense_splits")
+    .select("id, expense_id")
+    .in("expense_id", expenseIds)
+    .eq("user_id", user.id)
+    .eq("status", "pending");
+
+  if (splitsError || !splits) {
+    return { success: false, message: "Failed to fetch splits" };
+  }
+
+  if (splits.length === 0) {
+    return { success: true, count: 0 };
+  }
+
+  // Mark all as paid
+  const { error: updateError } = await supabase
+    .from("expense_splits")
+    .update({ status: "paid", paid_at: new Date().toISOString() })
+    .in(
+      "id",
+      splits.map((s) => s.id),
+    )
+    .eq("user_id", user.id)
+    .eq("status", "pending");
+
+  if (updateError) {
+    return { success: false, message: updateError.message };
+  }
+
+  revalidatePath(`/groups/${groupId}`);
+  revalidatePath("/dashboard");
+
+  return { success: true, count: splits.length };
+}
+
+export async function approveDebtPaymentsFromUser(
+  groupId: string,
+  fromUserId: string,
+): Promise<{ success: boolean; message?: string; count?: number }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, message: "Not authenticated" };
+  }
+
+  // Get all expenses owned by current user in the group
+  const { data: expenses, error: expensesError } = await supabase
+    .from("expenses")
+    .select("id")
+    .eq("group_id", groupId)
+    .eq("paid_by", user.id);
+
+  if (expensesError || !expenses) {
+    return { success: false, message: "Failed to fetch expenses" };
+  }
+
+  const expenseIds = expenses.map((e) => e.id);
+
+  if (expenseIds.length === 0) {
+    return { success: true, count: 0 };
+  }
+
+  // Get all paid splits from the specific user for these expenses
+  const { data: splits, error: splitsError } = await supabase
+    .from("expense_splits")
+    .select("id, user_id, amount_owed, expense_id")
+    .in("expense_id", expenseIds)
+    .eq("user_id", fromUserId)
+    .eq("status", "paid");
+
+  if (splitsError || !splits) {
+    return { success: false, message: "Failed to fetch splits" };
+  }
+
+  if (splits.length === 0) {
+    return { success: true, count: 0 };
+  }
+
+  // Mark all as approved
+  const { error: updateError } = await supabase
+    .from("expense_splits")
+    .update({ status: "approved", approved_at: new Date().toISOString() })
+    .in(
+      "id",
+      splits.map((s) => s.id),
+    )
+    .eq("user_id", fromUserId)
+    .eq("status", "paid");
+
+  if (updateError) {
+    return { success: false, message: updateError.message };
+  }
+
+  // Send notification to user whose payments were approved
+  for (const split of splits) {
+    try {
+      const { data: expense } = await supabase
+        .from("expenses")
+        .select("title")
+        .eq("id", split.expense_id)
+        .single();
+
+      if (expense) {
+        await sendNotificationToUser(split.user_id, {
+          title: "Payment Approved",
+          body: `Your payment of Rs.${split.amount_owed} for "${expense.title}" has been approved ✅`,
+          url: `/expenses/${split.expense_id}`,
+        });
+      }
+    } catch (err) {
+      console.error("Push notification failed for split:", err);
+    }
+  }
+
+  revalidatePath(`/groups/${groupId}`);
+  revalidatePath("/dashboard");
+
+  return { success: true, count: splits.length };
+}

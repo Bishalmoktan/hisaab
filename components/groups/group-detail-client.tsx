@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { useRealtimeRefresh } from '@/hooks/use-realtime-refresh';
+import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import type {
   GroupWithMembers,
@@ -18,6 +19,10 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { InviteMemberModal } from '@/components/groups/invite-member-modal';
+import {
+  markDebtAsPaidForUser,
+  approveDebtPaymentsFromUser,
+} from '@/lib/services/expenses';
 import {
   Plus,
   Receipt,
@@ -44,6 +49,10 @@ export function GroupDetailClient({ group, expenses, balances, pairwiseDebts, cu
     { table: 'expense_splits' },
   ]);
 
+  const { toast } = useToast();
+  const [loadingDebtUsers, setLoadingDebtUsers] = useState<Set<string>>(new Set());
+  const [loadingOwedUsers, setLoadingOwedUsers] = useState<Set<string>>(new Set());
+
   const myRole = group.members.find((m) => m.user_id === currentUserId)?.role;
   const isAdmin = myRole === 'admin';
   const myBalance = balances.find((b) => b.userId === currentUserId);
@@ -54,6 +63,127 @@ export function GroupDetailClient({ group, expenses, balances, pairwiseDebts, cu
   const getUserName = (userId: string) => {
     const member = group.members.find((m) => m.user_id === userId);
     return member?.user.name ?? 'Unknown';
+  };
+
+  const handleMarkAsPaidForUser = async (toUserId: string) => {
+    setLoadingDebtUsers((prev) => new Set(prev).add(toUserId));
+    try {
+      const result = await markDebtAsPaidForUser(group.id, toUserId);
+      if (result.success) {
+        toast({
+          title: 'Success',
+          description: `Marked ${result.count} expense${result.count !== 1 ? 's' : ''} as paid`,
+        });
+      } else {
+        toast({
+          title: 'Error',
+          description: result.message || 'Failed to mark expenses as paid',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'An unexpected error occurred',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoadingDebtUsers((prev) => {
+        const next = new Set(prev);
+        next.delete(toUserId);
+        return next;
+      });
+    }
+  };
+
+  const handleApprovePaymentsFromUser = async (fromUserId: string) => {
+    setLoadingOwedUsers((prev) => new Set(prev).add(fromUserId));
+    try {
+      const result = await approveDebtPaymentsFromUser(group.id, fromUserId);
+      if (result.success) {
+        toast({
+          title: 'Success',
+          description: `Approved ${result.count} expense${result.count !== 1 ? 's' : ''} payment${result.count !== 1 ? 's' : ''}`,
+        });
+      } else {
+        toast({
+          title: 'Error',
+          description: result.message || 'Failed to approve expenses',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'An unexpected error occurred',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoadingOwedUsers((prev) => {
+        const next = new Set(prev);
+        next.delete(fromUserId);
+        return next;
+      });
+    }
+  };
+
+  // Helper function to get status for a user in "You owe"
+  const getMyDebtStatusWithUser = (toUserId: string) => {
+    const userExpenses = expenses.filter((e) => e.paid_by === toUserId);
+    const mySplits = userExpenses.flatMap((e) => 
+      e.splits.filter((s) => s.user_id === currentUserId)
+    );
+
+    if (mySplits.length === 0) return null;
+
+    // If any are pending, show pending
+    if (mySplits.some((s) => s.status === 'pending')) return 'pending';
+    // If any are paid, show paid
+    if (mySplits.some((s) => s.status === 'paid')) return 'paid';
+    // Otherwise all approved
+    return 'approved';
+  };
+
+  // Helper function to get status for a user in "Owed to me"
+  const getOwedToMeStatusFromUser = (fromUserId: string) => {
+    const userExpenses = expenses.filter((e) => e.paid_by === currentUserId);
+    const theirSplits = userExpenses.flatMap((e) =>
+      e.splits.filter((s) => s.user_id === fromUserId)
+    );
+
+    if (theirSplits.length === 0) return null;
+
+    // If any are pending, show pending
+    if (theirSplits.some((s) => s.status === 'pending')) return 'pending';
+    // If any are paid, show paid (awaiting approval)
+    if (theirSplits.some((s) => s.status === 'paid')) return 'paid';
+    // Otherwise all approved
+    return 'approved';
+  };
+
+  const getStatusBadge = (status: string | null) => {
+    switch (status) {
+      case 'pending':
+        return (
+          <Badge variant="destructive" className="text-xs bg-red-100 text-red-700">
+            Pending
+          </Badge>
+        );
+      case 'paid':
+        return (
+          <Badge variant="secondary" className="text-xs bg-yellow-100 text-yellow-700">
+            Awaiting approval
+          </Badge>
+        );
+      case 'approved':
+        return (
+          <Badge variant="secondary" className="text-xs bg-green-100 text-green-700">
+            Settled
+          </Badge>
+        );
+      default:
+        return null;
+    }
   };
 
   return (
@@ -133,21 +263,46 @@ export function GroupDetailClient({ group, expenses, balances, pairwiseDebts, cu
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2 pt-0">
-                {myDebts.map((debt) => (
-                  <div key={`${debt.fromUserId}-${debt.toUserId}`} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Avatar className="w-6 h-6 shrink-0">
-                        <AvatarFallback className="text-xs bg-red-100 text-red-700">
-                          {getUserName(debt.toUserId)[0]}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="text-xs sm:text-sm text-slate-700 truncate">{getUserName(debt.toUserId)}</span>
+                {myDebts.map((debt) => {
+                  const status = getMyDebtStatusWithUser(debt.toUserId);
+                  return (
+                    <div key={`${debt.fromUserId}-${debt.toUserId}`} className="flex flex-col gap-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <Avatar className="w-6 h-6 shrink-0">
+                            <AvatarFallback className="text-xs bg-red-100 text-red-700">
+                              {getUserName(debt.toUserId)[0]}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-xs sm:text-sm text-slate-700 truncate">{getUserName(debt.toUserId)}</span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-xs sm:text-sm font-semibold text-red-600">
+                            {formatCurrency(debt.amount)}
+                          </span>
+                          {status === "pending" && <Button
+                            onClick={() => handleMarkAsPaidForUser(debt.toUserId)}
+                            disabled={loadingDebtUsers.has(debt.toUserId)}
+                            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-xs h-7 px-2 sm:h-8 sm:px-3"
+                            size="sm"
+                          >
+                            {loadingDebtUsers.has(debt.toUserId) ? (
+                              <span>...</span>
+                            ) : (
+                              <span className="hidden sm:inline">Request</span>
+                            )}
+                            <span className="sm:hidden">✓</span>
+                          </Button>}
+                        </div>
+                      </div>
+                      {status && (
+                        <div className="flex justify-end">
+                          {getStatusBadge(status)}
+                        </div>
+                      )}
                     </div>
-                    <span className="text-xs sm:text-sm font-semibold text-red-600 shrink-0 ml-2">
-                      {formatCurrency(debt.amount)}
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
               </CardContent>
             </Card>
           )}
@@ -161,21 +316,49 @@ export function GroupDetailClient({ group, expenses, balances, pairwiseDebts, cu
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2 pt-0">
-                {owedToMe.map((debt) => (
-                  <div key={`${debt.fromUserId}-${debt.toUserId}`} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Avatar className="w-6 h-6 shrink-0">
-                        <AvatarFallback className="text-xs bg-green-100 text-green-700">
-                          {getUserName(debt.fromUserId)[0]}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="text-xs sm:text-sm text-slate-700 truncate">{getUserName(debt.fromUserId)}</span>
+                {owedToMe.map((debt) => {
+                  const status = getOwedToMeStatusFromUser(debt.fromUserId);
+                  const shouldShowApprove = status === 'paid';
+                  return (
+                    <div key={`${debt.fromUserId}-${debt.toUserId}`} className="flex flex-col gap-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <Avatar className="w-6 h-6 shrink-0">
+                            <AvatarFallback className="text-xs bg-green-100 text-green-700">
+                              {getUserName(debt.fromUserId)[0]}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-xs sm:text-sm text-slate-700 truncate">{getUserName(debt.fromUserId)}</span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-xs sm:text-sm font-semibold text-green-600">
+                            {formatCurrency(debt.amount)}
+                          </span>
+                          {shouldShowApprove && (
+                            <Button
+                              onClick={() => handleApprovePaymentsFromUser(debt.fromUserId)}
+                              disabled={loadingOwedUsers.has(debt.fromUserId)}
+                              className="bg-green-600 hover:bg-green-700 text-xs h-7 px-2 sm:h-8 sm:px-3"
+                              size="sm"
+                            >
+                              {loadingOwedUsers.has(debt.fromUserId) ? (
+                                <span>...</span>
+                              ) : (
+                                <span className="hidden sm:inline">Approve</span>
+                              )}
+                              <span className="sm:hidden">✓</span>
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                      {status && (
+                        <div className="flex justify-end">
+                          {getStatusBadge(status)}
+                        </div>
+                      )}
                     </div>
-                    <span className="text-xs sm:text-sm font-semibold text-green-600 shrink-0 ml-2">
-                      {formatCurrency(debt.amount)}
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
               </CardContent>
             </Card>
           )}
