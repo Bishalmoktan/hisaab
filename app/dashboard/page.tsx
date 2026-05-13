@@ -26,19 +26,20 @@ export default async function DashboardPage() {
     created_at: new Date().toISOString(),
   };
 
-  const [groups, recentExpenses] = await Promise.all([
+  const [groups, allExpenses, recentExpenses] = await Promise.all([
     getUserGroups(),
-    getRecentExpenses(8),
+    getRecentExpenses(9999), // Fetch all expenses for accurate balance calculation
+    getRecentExpenses(8), // Limit display to 8 recent expenses
   ]);
 
-  // Get all unique users from expenses
+  // Get all unique users from all expenses
   const allUsers = new Map<string, User>();
-  recentExpenses.forEach((e) => {
+  allExpenses.forEach((e) => {
     allUsers.set(e.payer.id, e.payer);
     e.splits.forEach((s) => allUsers.set(s.user.id, s.user));
   });
 
-  const balances = calculateUserBalances(recentExpenses, Array.from(allUsers.values()));
+  const balances = calculateUserBalances(allExpenses, Array.from(allUsers.values()));
   const myBalance = balances.find((b) => b.userId === user.id);
 
   return (
