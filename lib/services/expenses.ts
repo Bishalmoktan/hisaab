@@ -523,3 +523,284 @@ export async function approveDebtPaymentsFromUser(
 
   return { success: true, count: splits.length };
 }
+
+// Get monthly expenses for dashboard charts
+export async function getMonthlyExpensesData(year: number, month: number) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  // Get user's group IDs
+  const { data: memberships } = await supabase
+    .from("group_members")
+    .select("group_id")
+    .eq("user_id", user.id);
+
+  if (!memberships?.length) return null;
+  const groupIds = (memberships as { group_id: string }[]).map(
+    (m) => m.group_id,
+  );
+
+  const startDate = new Date(year, month - 1, 1).toISOString().split("T")[0];
+  const endDate = new Date(year, month, 0).toISOString().split("T")[0];
+
+  const { data: expenses, error } = await supabase
+    .from("expenses")
+    .select(
+      `
+      id,
+      date,
+      title,
+      total_amount,
+      paid_by,
+      splits:expense_splits(
+        user_id,
+        amount_owed
+      )
+    `,
+    )
+    .in("group_id", groupIds)
+    .gte("date", startDate)
+    .lte("date", endDate)
+    .order("date", { ascending: true });
+
+  if (error) {
+    console.error("getMonthlyExpensesData error:", error);
+    return null;
+  }
+
+  return {
+    expenses: expenses ?? [],
+    month,
+    year,
+  };
+}
+
+// Get daily expense breakdown for a month
+export async function getMonthlyExpensesByDay(year: number, month: number) {
+  const data = await getMonthlyExpensesData(year, month);
+  if (!data) return [];
+
+  const dayMap = new Map<
+    string,
+    { date: string; totalAmount: number; count: number }
+  >();
+
+  data.expenses.forEach((expense) => {
+    const date = expense.date;
+    const existing = dayMap.get(date) ?? {
+      date,
+      totalAmount: 0,
+      count: 0,
+    };
+    dayMap.set(date, {
+      date,
+      totalAmount: existing.totalAmount + Number(expense.total_amount),
+      count: existing.count + 1,
+    });
+  });
+
+  return Array.from(dayMap.values()).sort((a, b) =>
+    a.date.localeCompare(b.date),
+  );
+}
+
+// Get all months with expenses for a year
+export async function getUserExpenseMonths(year?: number) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  // Get user's group IDs
+  const { data: memberships } = await supabase
+    .from("group_members")
+    .select("group_id")
+    .eq("user_id", user.id);
+
+  if (!memberships?.length) return [];
+  const groupIds = (memberships as { group_id: string }[]).map(
+    (m) => m.group_id,
+  );
+
+  const targetYear = year ?? new Date().getFullYear();
+  const startDate = `${targetYear}-01-01`;
+  const endDate = `${targetYear}-12-31`;
+
+  const { data: expenses } = await supabase
+    .from("expenses")
+    .select("date")
+    .in("group_id", groupIds)
+    .gte("date", startDate)
+    .lte("date", endDate);
+
+  if (!expenses) return [];
+
+  const months = new Set<number>();
+  expenses.forEach((expense) => {
+    const month = new Date(expense.date).getMonth() + 1;
+    months.add(month);
+  });
+
+  return Array.from(months).sort((a, b) => a - b);
+}
+
+// Get group members expense summary for leaderboard
+export async function getGroupMembersExpenseSummary(
+  groupId: string,
+  year: number,
+  month: number,
+) {
+  const supabase = await createClient();
+
+  const startDate = new Date(year, month - 1, 1).toISOString().split("T")[0];
+  const endDate = new Date(year, month, 0).toISOString().split("T")[0];
+
+  // Get group members
+  const { data: members } = await supabase
+    .from("group_members")
+    .select("user_id, user:users(*)")
+    .eq("group_id", groupId);
+
+  if (!members?.length) return [];
+
+  // Get all expenses for the month in this group
+  const { data: expenses } = await supabase
+    .from("expenses")
+    .select(
+      `
+      id,
+      paid_by,
+      total_amount,
+      splits:expense_splits(
+        user_id,
+        amount_owed
+      )
+    `,
+    )
+    .eq("group_id", groupId)
+    .gte("date", startDate)
+    .lte("date", endDate);
+
+  // Calculate expenses for each member
+  const memberExpenses = new Map<string, { total: number; paid: number }>();
+
+  members.forEach((member) => {
+    memberExpenses.set(member.user_id, { total: 0, paid: 0 });
+  });
+
+  expenses?.forEach((expense) => {
+    // Add amount paid
+    const existing = memberExpenses.get(expense.paid_by) ?? {
+      total: 0,
+      paid: 0,
+    };
+    existing.paid += Number(expense.total_amount);
+    memberExpenses.set(expense.paid_by, existing);
+
+    // Add amount owed
+    expense.splits.forEach((split) => {
+      const existing2 = memberExpenses.get(split.user_id) ?? {
+        total: 0,
+        paid: 0,
+      };
+      existing2.total += Number(split.amount_owed);
+      memberExpenses.set(split.user_id, existing2);
+    });
+  });
+
+  // Convert to leaderboard format
+  const leaderboard = (members as any[])
+    .map((member) => {
+      const exp = memberExpenses.get(member.user_id) ?? { total: 0, paid: 0 };
+      return {
+        userId: member.user_id,
+        user: member.user,
+        totalExpense: exp.total,
+        amountPaid: exp.paid,
+        balance: exp.paid - exp.total,
+      };
+    })
+    .sort((a, b) => a.totalExpense - b.totalExpense);
+
+  return leaderboard;
+}
+
+// Get daily leaderboard for a specific day
+export async function getGroupMembersExpenseSummaryByDay(
+  groupId: string,
+  date: string,
+) {
+  const supabase = await createClient();
+
+  // Get group members
+  const { data: members } = await supabase
+    .from("group_members")
+    .select("user_id, user:users(*)")
+    .eq("group_id", groupId);
+
+  if (!members?.length) return [];
+
+  // Get all expenses for the day in this group
+  const { data: expenses } = await supabase
+    .from("expenses")
+    .select(
+      `
+      id,
+      paid_by,
+      total_amount,
+      splits:expense_splits(
+        user_id,
+        amount_owed
+      )
+    `,
+    )
+    .eq("group_id", groupId)
+    .eq("date", date);
+
+  // Calculate expenses for each member
+  const memberExpenses = new Map<string, { total: number; paid: number }>();
+
+  members.forEach((member) => {
+    memberExpenses.set(member.user_id, { total: 0, paid: 0 });
+  });
+
+  expenses?.forEach((expense) => {
+    // Add amount paid
+    const existing = memberExpenses.get(expense.paid_by) ?? {
+      total: 0,
+      paid: 0,
+    };
+    existing.paid += Number(expense.total_amount);
+    memberExpenses.set(expense.paid_by, existing);
+
+    // Add amount owed
+    expense.splits.forEach((split) => {
+      const existing2 = memberExpenses.get(split.user_id) ?? {
+        total: 0,
+        paid: 0,
+      };
+      existing2.total += Number(split.amount_owed);
+      memberExpenses.set(split.user_id, existing2);
+    });
+  });
+
+  // Convert to leaderboard format
+  const leaderboard = (members as any[])
+    .map((member) => {
+      const exp = memberExpenses.get(member.user_id) ?? { total: 0, paid: 0 };
+      return {
+        userId: member.user_id,
+        user: member.user,
+        totalExpense: exp.total,
+        amountPaid: exp.paid,
+        balance: exp.paid - exp.total,
+      };
+    })
+    .sort((a, b) => a.totalExpense - b.totalExpense);
+
+  return leaderboard;
+}

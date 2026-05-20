@@ -21,6 +21,7 @@ import {
   ArrowRight,
   Receipt,
   Clock,
+  BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PushNotificationSetup } from "@/components/push-notification/push-notification-setup";
@@ -163,6 +164,26 @@ export function DashboardClient({
             </CardContent>
           </Card>
         </div>
+
+        {/* Quick Analytics Section */}
+        <Link href="/dashboard/expenses">
+          <Card className="border-0 shadow-sm bg-gradient-to-r from-blue-50 to-indigo-50 hover:shadow-md transition-shadow cursor-pointer">
+            <CardContent className="p-4 sm:p-6 lg:p-8">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <div className="w-10 sm:w-12 h-10 sm:h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <BarChart3 className="w-5 sm:w-6 h-5 sm:h-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm sm:text-base font-semibold text-slate-900">Monthly Expense Analytics</p>
+                    <p className="text-xs text-slate-600">View trends, charts & detailed breakdown of your spending</p>
+                  </div>
+                </div>
+                <ArrowRight className="w-5 h-5 text-blue-600 shrink-0" />
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
           {/* Groups */}

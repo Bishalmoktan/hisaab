@@ -14,6 +14,7 @@ import {
   X,
   ChevronRight,
   Bell,
+  BarChart3,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -29,6 +30,7 @@ import { useState } from 'react';
 
 const navLinks = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/dashboard/expenses', label: 'Analytics', icon: BarChart3 },
   { href: '/groups', label: 'Groups', icon: Users },
 ];
 

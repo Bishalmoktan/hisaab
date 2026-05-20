@@ -201,6 +201,44 @@ export function ExpenseDetailClient({ expense, currentUserId }: Props) {
         </Card>
       )}
 
+      {mySplit && !iAmPayer && mySplit.status === 'approved' && (
+        <Card className="border-2 border-green-200 bg-green-50/50 shadow-none">
+          <CardContent className="p-3 sm:p-4">
+            <div className="font-semibold text-slate-900 flex items-center gap-2 text-sm sm:text-base">
+              <CheckCircle className="w-4 h-4 text-green-600 shrink-0" />
+              Payment settled
+            </div>
+            <div className="text-xs sm:text-sm text-slate-500 mt-1">
+              Your payment of {formatCurrency(Number(mySplit.amount_owed))} has been approved.
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Payer's own share (if they are part of the splits) */}
+      {mySplit && iAmPayer && (
+        <Card className={cn(
+          "border-2 shadow-none",
+          mySplit.status === 'pending' && "border-orange-200 bg-orange-50/50",
+          mySplit.status === 'paid' && "border-yellow-200 bg-yellow-50/50",
+          mySplit.status === 'approved' && "border-green-200 bg-green-50/50"
+        )}>
+          <CardContent className="p-3 sm:p-4">
+            <div className="font-semibold text-slate-900 flex items-center gap-2 text-sm sm:text-base">
+              <CreditCard className="w-4 h-4 shrink-0" style={{
+                color: mySplit.status === 'pending' ? '#ea580c' : mySplit.status === 'paid' ? '#ca8a04' : '#16a34a'
+              }} />
+              Your responsibility: {formatCurrency(Number(mySplit.amount_owed))}
+            </div>
+            <div className="text-xs sm:text-sm text-slate-500 mt-1">
+              {mySplit.status === 'pending' && 'You paid this full amount'}
+              {mySplit.status === 'paid' && 'You paid this amount - awaiting your own approval'}
+              {mySplit.status === 'approved' && 'Settled'}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Splits List */}
       <Card className="border-0 shadow-sm bg-white">
         <CardHeader className="pb-2 sm:pb-4">

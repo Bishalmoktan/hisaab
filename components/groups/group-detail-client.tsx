@@ -33,6 +33,7 @@ import {
   Crown,
   Clock,
   ChevronRight,
+  Trophy,
 } from 'lucide-react';
 
 interface Props {
@@ -365,14 +366,19 @@ export function GroupDetailClient({ group, expenses, balances, pairwiseDebts, cu
         </div>
       )}
 
-      {/* Tabs: Expenses | Members */}
+      {/* Tabs: Expenses | Members | Leaderboard | Balances */}
       <Tabs defaultValue="expenses" className="w-full">
-        <TabsList className="bg-slate-100 w-full grid grid-cols-3">
+        <TabsList className="bg-slate-100 w-full grid grid-cols-4">
           <TabsTrigger value="expenses" className="gap-1 sm:gap-2 text-xs sm:text-sm">
             <Receipt className="w-3 h-3 sm:w-4 sm:h-4" />
             <span className="hidden sm:inline">Expenses</span>
             <span className="sm:hidden">({expenses.length})</span>
             <span className="hidden sm:inline">({expenses.length})</span>
+          </TabsTrigger>
+          <TabsTrigger value="leaderboard" className="gap-1 sm:gap-2 text-xs sm:text-sm">
+            <Trophy className="w-3 h-3 sm:w-4 sm:h-4" />
+            <span className="hidden sm:inline">Leaderboard</span>
+            <span className="sm:hidden">Board</span>
           </TabsTrigger>
           <TabsTrigger value="members" className="gap-1 sm:gap-2 text-xs sm:text-sm">
             <Users className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -524,6 +530,25 @@ export function GroupDetailClient({ group, expenses, balances, pairwiseDebts, cu
               <InviteMemberModal groupId={group.id} />
             </div>
           )}
+        </TabsContent>
+
+        {/* Leaderboard Tab */}
+        <TabsContent value="leaderboard" className="mt-3 sm:mt-4">
+          <div className="space-y-3">
+            <Card className="border-0 shadow-sm bg-white">
+              <CardContent className="p-4">
+                <p className="text-sm text-slate-600 mb-4">View the complete leaderboard with detailed analytics and comparisons for this month.</p>
+                <Link href={`/groups/${group.id}/leaderboard`}>
+                  <Button className="w-full bg-blue-600 hover:bg-blue-700 gap-2">
+                    <Trophy className="w-4 h-4" />
+                    View Full Leaderboard
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+            <p className="text-xs text-slate-400 text-center">See spending rankings, charts, and member comparisons</p>
+          </div>
         </TabsContent>
 
         {/* All Balances Tab */}
