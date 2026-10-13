@@ -4,7 +4,15 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
-type TableName = 'expenses' | 'expense_splits' | 'group_members';
+type TableName =
+  | 'expenses'
+  | 'expense_splits'
+  | 'group_members'
+  | 'game_tables'
+  | 'game_players'
+  | 'game_rounds'
+  | 'game_actions'
+  | 'game_player_cards';
 
 interface Options {
   table: TableName;

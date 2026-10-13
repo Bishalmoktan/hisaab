@@ -15,6 +15,7 @@ import {
   ChevronRight,
   Bell,
   BarChart3,
+  Gamepad2,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -32,6 +33,7 @@ const navLinks = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/dashboard/expenses', label: 'Analytics', icon: BarChart3 },
   { href: '/groups', label: 'Groups', icon: Users },
+  { href: '/gaming', label: 'Multiplayer Gaming', icon: Gamepad2 },
 ];
 
 interface NavbarProps {

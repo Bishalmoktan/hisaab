@@ -33,6 +33,31 @@ export interface Database {
         Insert: Omit<ExpenseSplit, 'id'>;
         Update: Partial<Omit<ExpenseSplit, 'id'>>;
       };
+      game_tables: {
+        Row: import('./game/types').GameTable;
+        Insert: Omit<import('./game/types').GameTable, 'id' | 'created_at'>;
+        Update: Partial<Omit<import('./game/types').GameTable, 'id' | 'created_at'>>;
+      };
+      game_players: {
+        Row: import('./game/types').GamePlayer;
+        Insert: Omit<import('./game/types').GamePlayer, 'id' | 'joined_at'>;
+        Update: Partial<Omit<import('./game/types').GamePlayer, 'id'>>;
+      };
+      game_rounds: {
+        Row: import('./game/types').GameRound;
+        Insert: Omit<import('./game/types').GameRound, 'id' | 'started_at'>;
+        Update: Partial<Omit<import('./game/types').GameRound, 'id'>>;
+      };
+      game_actions: {
+        Row: import('./game/types').GameAction;
+        Insert: Omit<import('./game/types').GameAction, 'id' | 'created_at'>;
+        Update: Partial<Omit<import('./game/types').GameAction, 'id'>>;
+      };
+      game_player_cards: {
+        Row: import('./game/types').GamePlayerCards;
+        Insert: Omit<import('./game/types').GamePlayerCards, 'id'>;
+        Update: Partial<Omit<import('./game/types').GamePlayerCards, 'id'>>;
+      };
     };
   };
 }
